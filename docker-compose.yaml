@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   fastapi-test-technique:
     build: .
@@ -7,6 +5,7 @@ services:
       - "8000:8000"
     environment:
       TT_COMPANY: MA PETITE ENTREPRISE
+      TT_ADMIN_SECRET: change-me
       TT_CUSTOMTASKS: |
         Vous devez rédiger un Dockerfile et un docker-compose pour faire fonctionner cette application
         Vous n'avez pas le droit de changer le code source
@@ -29,3 +28,8 @@ services:
           + une explication de l'utilisation de vos scripts
           + vos remarques sur l'entretien
         Vous devez envoyer cette archive au mail suivant: toto@tata.tutu
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()==b'ok' else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
