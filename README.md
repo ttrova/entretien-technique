@@ -1,83 +1,100 @@
 # Entretien Technique – DevOps / Systèmes
 
-Ce projet est un exercice conçu pour tester des compétences orientées **administration système** et **DevOps** à travers une petite application FastAPI.
+Exercice d'entretien orienté **administration système** et **DevOps** autour d'une
+petite application FastAPI. Le candidat doit « casser » une API en plusieurs étapes,
+récupérer son code source, suivre une chaîne d'endpoints cachés, puis conteneuriser
+et déployer l'application.
 
 ---
 
-## Objectif
+## Modèle « deux mondes »
 
-L’objectif est de manipuler une API FastAPI qui :
-- Génère un **token éphémère** (valide 1 seconde) visible dans un ASCII art.
-- Demande une petite transformation du token avant usage.
-- Protège l’accès à son propre code source avec ce token.
-- S’exécute dans un conteneur Docker et via docker-compose.
+Le projet sépare strictement deux responsabilités :
 
----
+- **`core.py` — le cœur RÉVÉLÉ et autonome.** Toute la logique de l'énigme. C'est le
+  seul fichier renvoyé au candidat via `inspect.getsource`, et il se déploie seul
+  (`python core.py`).
+- **`instrument.py` + `evaluation.py` — l'outillage ÉVALUATEUR.** Mesure du candidat
+  et rapport. Ces modules importent `core` ; `core` ne les importe **jamais**. Le
+  candidat ne voit donc aucune trace d'instrumentation dans le source révélé.
 
-## Instructions de l’exercice
-
-### Étape 1 : Découverte de l’API
-- Faites un `GET /` pour lire les instructions.
-- Faites un `GET /token` pour récupérer un token éphémère.
-
-### Étape 2 : Transformation du token
-- Le token est modifié volontairement.
-- Vous devez :
-  - Remplacer toutes les lettres **`Z` par `A`**
-  - Convertir le token en **minuscules**
-
-### Étape 3 : Authentification
-- Faites un `POST /token` avec le header :
-  ```
-  Authorization: Bearer <token_transformé>
-  ```
-- Si le token est correct et encore valide, l’API retourne le **code source du script**.
-
-### Étape 4 : Poursuite
-- Une fois le code source obtenu, vous découvrirez un endpoint supplémentaire en `GET /custom-tasks/{ENTREPRISE}`
-- Cette endpoint contient des tâches supplémentaires customisable par variables d'env
+Le test `tests/test_self_contained.py` prouve mécaniquement cette séparation.
 
 ---
 
-## Configuration du test
+## L'énigme (Phase A)
 
-Le test ce configure avec des variables d'environnement:
-- `TT_COMPANY` (default: 'THOSTED')
-- `TT_CUSTOMTASKS` (default: None)
-
-l'ascii art ainsi que l'endpoint des tâches customs dépend de `TT_COMPANY`.
-
-les taches supplémentaires sont séparées par `\n\n` et afficher dans l'endpoint des tâches customs. (exemple dans le docker-compose)
+1. `GET /` — consignes.
+2. `GET /token` — token éphémère (valide **1 seconde**) incrusté dans un ASCII art.
+   Le token est obfusqué : remplacer les `Z` par des `A`, puis passer en minuscules.
+3. `POST /token` avec `Authorization: Bearer <token transformé>` — renvoie le source
+   de `core.py`.
+4. Dans le source : la constante `FIL_ARIANE` (ROT13 puis base64) décode le chemin
+   d'un endpoint caché (`/relais`).
+5. `GET /relais` exige un header `X-Entretien` (couche protocole) et renvoie, encodé,
+   le chemin de l'étape finale `GET /custom-tasks/{TT_COMPANY}` — les consignes de
+   rendu (Phase B : Dockerfile, k8s, CI, livraison).
 
 ---
 
-## Installation & Exécution
-### Avec docker seul
-Construire l’image :
+## Lancer une session d'entretien
+
+### docker-compose (recommandé)
+```bash
+docker compose up --build
+```
+
+### docker seul
 ```bash
 docker build -t entretien-technique .
-docker run -p 8000:8000 entretien-technique
+docker run -p 8000:8000 -e TT_ADMIN_SECRET=monsecret entretien-technique
 ```
 
+API disponible sur http://localhost:8000
 
-### Avec docker-compose
+---
+
+## Lire le rapport d'évaluation
+
+L'outillage agrège par candidat (heuristique IP + User-Agent) les jalons de
+progression, le nombre de tentatives échouées et les traces d'erreur de
+transformation.
+
 ```bash
-docker-compose up --build
+curl -H "X-Admin-Secret: $TT_ADMIN_SECRET" http://localhost:8000/admin/report
 ```
 
-API disponible sur : [http://localhost:8000](http://localhost:8000)
+Renvoie un JSON : timeline, durée jusqu'à l'étape finale, tentatives, erreurs.
 
 ---
 
-## Tâches additionnelles possibles
+## Variables d'environnement
 
-- **Dockerfile** : rédiger un Dockerfile et un docker-compose.
-- **Reverse proxy** : déployer derrière Nginx ou Traefik.
-- **Monitoring** : ajouter Prometheus + Grafana.
-- **CI/CD** : automatiser build, tests et push sur Docker Hub.
-- **Kubernetes** : préparer un manifeste YAML pour déploiement en cluster.
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `TT_COMPANY` | `THOSTED` | Nom dans l'ASCII art, l'endpoint final et le header `X-Entretien`. |
+| `TT_CUSTOMTASKS` | `None` | Tâches additionnelles, séparées par `\n\n`. |
+| `TT_ADMIN_SECRET` | `change-me` | Secret du rapport `/admin/report` (outillage uniquement). |
 
 ---
 
-## 📄 Licence
-Ce projet est publié sous licence **MIT**. Vous êtes libre de l’utiliser, le modifier et le redistribuer.
+## Tests
+
+```bash
+pip install -r requirements.txt
+python -m pytest -v
+```
+
+---
+
+## Note : dépôt public
+
+Ce dépôt est public : l'énigme est volontairement « livre ouvert ». Sa valeur tient à
+la **pression temporelle** (fenêtre d'1 s imposant le scripting) et à la **variation
+par session** via `TT_COMPANY` / `TT_CUSTOMTASKS`. Le secret d'admin et le mécanisme
+d'évaluation vivent hors du source révélé.
+
+---
+
+## Licence
+Publié sous licence **MIT**.
