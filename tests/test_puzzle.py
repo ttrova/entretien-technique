@@ -123,3 +123,36 @@ def test_registry_duration_none_when_incomplete():
     reg.record("k2", "start")
     report = reg.report()
     assert report["k2"]["duration_to_final_seconds"] is None
+
+
+def test_instrument_records_and_reports(monkeypatch):
+    monkeypatch.setenv("TT_ADMIN_SECRET", "s3cret")
+    import importlib
+    import instrument
+    importlib.reload(instrument)
+
+    iclient = TestClient(instrument.app)
+    iclient.get("/")
+    iclient.get("/token")
+    iclient.post("/token", headers={"Authorization": "Bearer wrong"})
+    token = core.generate_token()
+    iclient.post("/token", headers={"Authorization": f"Bearer {token}"})
+
+    # Sans secret -> refusé
+    assert iclient.get("/admin/report").status_code == 401
+    # Avec secret -> rapport
+    r = iclient.get("/admin/report", headers={"X-Admin-Secret": "s3cret"})
+    assert r.status_code == 200
+    data = r.json()
+    assert any(c["failed_attempts"] >= 1 for c in data.values())
+
+
+def test_instrument_does_not_leak_into_revealed_source():
+    # Le source révélé (celui de core) ne doit contenir aucune trace d'instrumentation
+    token = core.generate_token()
+    src = TestClient(core.app).post(
+        "/token", headers={"Authorization": f"Bearer {token}"}
+    ).text
+    assert "admin/report" not in src
+    assert "Registry" not in src
+    assert "import evaluation" not in src
