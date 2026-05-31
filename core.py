@@ -73,6 +73,10 @@ def get_token():
 
     return ascii_image
 
+@app.get("/healthz", response_class=PlainTextResponse)
+def healthz():
+    return "ok"
+
 @app.post("/token", response_class=PlainTextResponse)
 def post_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     current_token = generate_token()
