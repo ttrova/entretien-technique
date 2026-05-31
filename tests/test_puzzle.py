@@ -49,6 +49,21 @@ def test_get_token_contains_obfuscated_token():
     assert "| " in r.text
 
 
+def test_get_token_falls_back_when_font_missing(monkeypatch):
+    import pyfiglet
+    real = pyfiglet.figlet_format
+
+    def fake(*args, **kwargs):
+        if kwargs.get("font") == "bigmono12":
+            raise pyfiglet.FontNotFound("bigmono12")
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(core.pyfiglet, "figlet_format", fake)
+    r = client.get("/token")
+    assert r.status_code == 200
+    assert "+--" in r.text
+
+
 def test_get_token_survives_long_company(monkeypatch):
     # Un nom très long ne doit pas casser le rendu
     monkeypatch.setattr(core, "entreprise", "A" * 80)

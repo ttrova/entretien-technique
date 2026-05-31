@@ -58,7 +58,11 @@ def get_token():
     token_line = "| " + token + " |"
     token_frame = "+" + "-" * (len(token) + 2) + "+"
 
-    ascii_image = pyfiglet.figlet_format(text=entreprise, font="bigmono12", width=float("inf"))
+    try:
+        ascii_image = pyfiglet.figlet_format(text=entreprise, font="bigmono12", width=float("inf"))
+    except pyfiglet.FontNotFound:
+        # La police bigmono12 n'est pas embarquée par défaut ; on retombe sur la police standard.
+        ascii_image = pyfiglet.figlet_format(text=entreprise, width=float("inf"))
     lines = ascii_image.split("\n")
     h = len(lines)
     w = max((len(line) for line in lines), default=0)
