@@ -1,7 +1,9 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.responses import PlainTextResponse
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from datetime import datetime
+import base64
+import codecs
 import hashlib
 import inspect
 import uvicorn
@@ -42,7 +44,10 @@ Le token doit être placé dans le header Authorization en tant que Bearer
 Si le token est correct et encore valide (1 seconde), vous récupérez le code source du site web actuel
 
 ### ETAPE 3 :
-Dans ce code source, vous trouverez un endpoint supplémentaire avec plus d'étapes'''
+Dans ce code source, repérez la constante FIL_ARIANE.
+Elle est encodée en ROT13 puis base64 et décode le chemin d'un endpoint caché.
+Décodez-la, puis appelez cet endpoint en respectant ce que le code exige (un header).
+Il vous révélera, encodé de la même façon, l'étape finale de l'entretien.'''
 
 @app.get("/custom-tasks/"+entreprise, response_class=PlainTextResponse)
 def explain_custom():
@@ -101,6 +106,29 @@ def post_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
 
     source_code = inspect.getsource(inspect.getmodule(generate_token))
     return source_code
+
+
+def _encode_path(path: str) -> str:
+    return base64.b64encode(codecs.encode(path, "rot_13").encode()).decode()
+
+
+def _decode_path(token: str) -> str:
+    return codecs.encode(base64.b64decode(token).decode(), "rot_13")
+
+
+# Indice obfusqué (ROT13 puis base64) : décode vers le prochain endpoint.
+FIL_ARIANE = "L2VyeW52Zg=="
+
+
+@app.get("/relais", response_class=PlainTextResponse)
+def relais(x_entretien: str = Header(default=None)):
+    if x_entretien != entreprise.lower()[::-1]:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Header X-Entretien manquant ou incorrect",
+        )
+    return _encode_path(f"/custom-tasks/{entreprise}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)

@@ -70,3 +70,28 @@ def test_get_token_survives_long_company(monkeypatch):
     r = client.get("/token")
     assert r.status_code == 200
     assert len(r.text) > 0
+
+
+import base64
+import codecs
+
+
+def _decode_path(s: str) -> str:
+    return codecs.encode(base64.b64decode(s).decode(), "rot_13")
+
+
+def test_fil_ariane_decodes_to_relais():
+    # La constante littérale présente dans le source décode vers /relais
+    assert _decode_path(core.FIL_ARIANE) == "/relais"
+
+
+def test_relais_requires_header():
+    r = client.get("/relais")
+    assert r.status_code == 401
+
+
+def test_relais_with_header_reveals_next_stage():
+    header_value = core.entreprise.lower()[::-1]
+    r = client.get("/relais", headers={"X-Entretien": header_value})
+    assert r.status_code == 200
+    assert _decode_path(r.text.strip()) == f"/custom-tasks/{core.entreprise}"
