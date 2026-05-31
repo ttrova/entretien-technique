@@ -95,3 +95,31 @@ def test_relais_with_header_reveals_next_stage():
     r = client.get("/relais", headers={"X-Entretien": header_value})
     assert r.status_code == 200
     assert _decode_path(r.text.strip()) == f"/custom-tasks/{core.entreprise}"
+
+
+import evaluation
+
+
+def test_registry_records_timeline_and_attempts():
+    reg = evaluation.Registry()
+    reg.record("k1", "start")
+    reg.record("k1", "get_token")
+    reg.record("k1", "post_token_fail", detail="Bearer xxx")
+    reg.record("k1", "post_token_ok")
+    reg.record("k1", "final")
+
+    report = reg.report()
+    assert "k1" in report
+    c = report["k1"]
+    assert c["failed_attempts"] == 1
+    assert "Bearer xxx" in c["errors"]
+    assert {e["event"] for e in c["events"]} >= {"start", "post_token_ok", "final"}
+    assert c["duration_to_final_seconds"] is not None
+    assert c["duration_to_final_seconds"] >= 0
+
+
+def test_registry_duration_none_when_incomplete():
+    reg = evaluation.Registry()
+    reg.record("k2", "start")
+    report = reg.report()
+    assert report["k2"]["duration_to_final_seconds"] is None
