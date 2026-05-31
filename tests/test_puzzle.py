@@ -38,3 +38,20 @@ def test_post_token_accepts_current_token():
     r = client.post("/token", headers={"Authorization": f"Bearer {token}"})
     assert r.status_code == 200
     assert "def generate_token" in r.text  # renvoie le source de core.py
+
+
+def test_get_token_contains_obfuscated_token():
+    r = client.get("/token")
+    assert r.status_code == 200
+    # Le cadre du token est présent dans la sortie
+    assert "+--" in r.text
+    # Aucune lettre minuscule de hex (tout est affiché en majuscules obfusquées)
+    assert "| " in r.text
+
+
+def test_get_token_survives_long_company(monkeypatch):
+    # Un nom très long ne doit pas casser le rendu
+    monkeypatch.setattr(core, "entreprise", "A" * 80)
+    r = client.get("/token")
+    assert r.status_code == 200
+    assert len(r.text) > 0

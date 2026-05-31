@@ -52,26 +52,35 @@ def explain_custom():
 @app.get("/token", response_class=PlainTextResponse)
 def get_token():
     token = generate_token()
-    token_frame = '+' + '-'*(len(token)+2) + '+'
-
     token = token.upper()
     token = token.replace("A", "Z")
 
-    ascii_image = pyfiglet.figlet_format(text=entreprise, font='bigmono12', width=float("inf"))
-    h, w = len(ascii_image.split('\n')), len(ascii_image.split('\n')[0])
+    token_line = "| " + token + " |"
+    token_frame = "+" + "-" * (len(token) + 2) + "+"
 
-    ascii_image = '\n'.join([
-        line
-            if i not in [h//2-2, h//2-1, h//2] else
-        (
-            line[:w//2 - len(token_frame)//2] + token_frame + line[w//2 + len(token_frame)//2:]
-                if i in [h//2-2, h//2] else
-            line[:w//2 - len(token)//2-2] + '| ' + token + ' |' + line[w//2 + len(token)//2+2:]
-        )
-        for i, line in enumerate(ascii_image.split('\n'))
-    ])
+    ascii_image = pyfiglet.figlet_format(text=entreprise, font="bigmono12", width=float("inf"))
+    lines = ascii_image.split("\n")
+    h = len(lines)
+    w = max((len(line) for line in lines), default=0)
 
-    return ascii_image
+    # Si la figure est assez large, on incruste le cadre en son centre.
+    if w >= len(token_frame) + 4 and h >= 4:
+        mid = h // 2
+        out = []
+        for i, line in enumerate(lines):
+            line = line.ljust(w)
+            if i in (mid - 1, mid + 1):
+                start = w // 2 - len(token_frame) // 2
+                out.append(line[:start] + token_frame + line[start + len(token_frame):])
+            elif i == mid:
+                start = w // 2 - len(token_line) // 2
+                out.append(line[:start] + token_line + line[start + len(token_line):])
+            else:
+                out.append(line)
+        return "\n".join(out)
+
+    # Fallback : la figure est trop étroite -> on affiche le cadre dessous.
+    return ascii_image + "\n" + token_frame + "\n" + token_line + "\n" + token_frame
 
 @app.get("/healthz", response_class=PlainTextResponse)
 def healthz():
