@@ -23,36 +23,52 @@ def generate_token():
 
 @app.get("/", response_class=PlainTextResponse)
 def explain():
-    return f'''# Bienvenue dans cet entretien technique
-## Le contexte :
-Vous vous appretez à passer un entretien technique pour {entreprise}.
-Cet entretien a pour objectif de tester vos capacités a résoudre des problèmes d'administration systèmes et/ou de DEVOPS. 
+    return f'''# Entretien technique {entreprise}
 
-## L'entretien :
-### ETAPE 1 :
-Faites un GET sur /token
-Vous verrez un ASCII art avec un token à l'intérieur
-Récupérez le token
-Mais attention :
-- il est modifié
-- vous devez remplacer toutes les lettres 'Z' par des 'A'
-- vous devez passer le token en minuscules (lowercase)
+Cet exercice teste votre capacité à résoudre des problèmes d'administration système et de DevOps.
+Vous allez enchaîner des appels HTTP sur cette API pour récupérer son code source,
+puis suivre ce code jusqu'à une dernière page qui contient le travail à rendre.
 
-### ETAPE 2 :
-Faites un POST sur /token avec ce token transformé
-Le token doit être placé dans le header Authorization en tant que Bearer
-Si le token est correct et encore valide (1 seconde), vous récupérez le code source du site web actuel
+Utilisez les outils que vous voulez (curl, bash, Python...).
+L'étape 2 doit être scriptée : le token change chaque seconde, vous n'aurez pas le temps de le recopier à la main.
 
-### ETAPE 3 :
-Dans ce code source, repérez la constante FIL_ARIANE.
-Elle est encodée en ROT13 puis base64 et décode le chemin d'un endpoint caché.
-Décodez-la, puis appelez cet endpoint en respectant ce que le code exige (un header).
-Il vous révélera, encodé de la même façon, l'étape finale de l'entretien.'''
+## Étape 1 : récupérer le token
+
+Faites un GET sur /token.
+La réponse est un ASCII art avec un token encadré au milieu.
+Ce token est modifié. Pour retrouver le vrai token :
+1. remplacez chaque 'Z' par un 'A' ;
+2. passez tout en minuscules.
+
+Exemple : 3FZ9CZ devient 3fa9ca
+
+## Étape 2 : envoyer le token
+
+Faites un POST sur /token avec ce header :
+
+    Authorization: Bearer <token transformé>
+
+Le token n'est valable que pendant la seconde où il a été généré.
+Enchaînez le GET, la transformation et le POST dans un même script.
+Si le token est bon, la réponse contient le code source Python de cette application.
+Enregistrez-le, vous en aurez besoin pour la suite.
+
+## Étape 3 : trouver l'endpoint caché
+
+Dans le code source, cherchez la constante FIL_ARIANE.
+Elle contient le chemin d'un endpoint, encodé en ROT13 puis en base64.
+Pour la lire, faites l'inverse : décodez le base64, puis appliquez ROT13.
+
+Appelez cet endpoint en GET. Il refuse les requêtes qui n'ont pas un header précis :
+lisez la fonction qui le gère dans le code source pour trouver le nom du header et sa valeur.
+
+La réponse est encodée comme FIL_ARIANE. Décodez-la de la même façon :
+vous obtenez le chemin de la dernière page. Faites un GET dessus.'''
 
 @app.get("/custom-tasks/"+entreprise, response_class=PlainTextResponse)
 def explain_custom():
-    if not custom_tasks: return explain() + "\n Et en fait rien de plus."
-    return explain() + '\n\n' + '\n\n'.join([ f'### ETAPE {i+4} :\n' + t for i,t in enumerate(custom_tasks.split('\n\n'))])
+    if not custom_tasks: return explain() + "\n\nVous êtes arrivé au bout, il n'y a rien de plus à faire."
+    return explain() + '\n\n' + '\n\n'.join([ f'## Étape {i+4} : ' + t for i,t in enumerate(custom_tasks.strip().split('\n\n'))])
 
 @app.get("/token", response_class=PlainTextResponse)
 def get_token():
