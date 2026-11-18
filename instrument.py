@@ -19,11 +19,19 @@ ADMIN_SECRET = os.getenv("TT_ADMIN_SECRET", "change-me")
 app.middleware_stack = None
 
 
+def client_ip(request) -> str:
+    # En production, l'edge Caddy est le seul client direct : la vraie IP du
+    # candidat est la première de X-Forwarded-For, que Caddy réécrit lui-même.
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @app.middleware("http")
 async def track(request, call_next):
     response = await call_next(request)
-    client_host = request.client.host if request.client else "unknown"
-    key = f"{client_host}|{request.headers.get('user-agent', '')}"
+    key = f"{client_ip(request)}|{request.headers.get('user-agent', '')}"
     path = request.url.path
     method = request.method
     status_code = response.status_code
@@ -55,4 +63,5 @@ def admin_report(x_admin_secret: str = Header(default=None)):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False)
+    # Pas de log d'accès : Systeam annonce publiquement n'en garder aucun.
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=False, access_log=False)

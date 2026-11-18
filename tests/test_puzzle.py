@@ -156,3 +156,20 @@ def test_instrument_does_not_leak_into_revealed_source():
     assert "admin/report" not in src
     assert "Registry" not in src
     assert "import evaluation" not in src
+
+
+def test_instrument_keys_candidates_by_forwarded_ip(monkeypatch):
+    # Derrière le reverse proxy, client.host est toujours le proxy :
+    # deux candidats au même User-Agent doivent rester distincts.
+    monkeypatch.setenv("TT_ADMIN_SECRET", "s3cret")
+    import importlib
+    import instrument
+    importlib.reload(instrument)
+    instrument.registry._data.clear()
+
+    iclient = TestClient(instrument.app)
+    iclient.get("/", headers={"X-Forwarded-For": "203.0.113.7", "User-Agent": "curl/8"})
+    iclient.get("/", headers={"X-Forwarded-For": "198.51.100.9, 10.0.0.1", "User-Agent": "curl/8"})
+
+    data = iclient.get("/admin/report", headers={"X-Admin-Secret": "s3cret"}).json()
+    assert set(data) == {"203.0.113.7|curl/8", "198.51.100.9|curl/8"}
