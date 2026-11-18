@@ -1,0 +1,32 @@
+services:
+  fastapi-test-technique:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      TT_COMPANY: SYSTEAM
+      # Pas de valeur par défaut : /admin/report expose les IP des candidats.
+      TT_ADMIN_SECRET: ${TT_ADMIN_SECRET:?définissez TT_ADMIN_SECRET avant de lancer}
+      TT_CUSTOMTASKS: |
+        Écrire un Dockerfile
+        Écrivez un Dockerfile qui fait tourner cette application.
+        - Ne modifiez pas le code source récupéré à l'étape 2 : copiez-le tel quel dans l'image.
+        - Les dépendances Python se déduisent des imports en haut du fichier.
+        - L'application doit écouter sur le port 8000 du conteneur.
+        Vérifiez votre image avant de l'envoyer :
+            docker build -t exo-01 .
+            docker run --rm -p 8000:8000 exo-01
+            curl http://localhost:8000/token
+        Le dernier appel doit renvoyer l'ASCII art avec le token.
+
+        Envoyer votre rendu
+        Envoyez un mail à contact@systeam.sh avec :
+        - en objet : Exo 01 - <votre nom>
+        - en pièce jointe : votre Dockerfile
+        - dans le corps du mail : votre avis sur l'exercice. Ce qui était clair, ce qui vous a bloqué,
+          combien de temps vous y avez passé, ce que vous changeriez.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/healthz').read()==b'ok' else 1)"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
