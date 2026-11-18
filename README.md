@@ -32,8 +32,8 @@ Le test `tests/test_self_contained.py` prouve mécaniquement cette séparation.
 4. Dans le source : la constante `FIL_ARIANE` (ROT13 puis base64) décode le chemin
    d'un endpoint caché (`/relais`).
 5. `GET /relais` exige un header `X-Entretien` (couche protocole) et renvoie, encodé,
-   le chemin de l'étape finale `GET /custom-tasks/{TT_COMPANY}` — les consignes de
-   rendu (Phase B : Dockerfile, k8s, CI, livraison).
+   le chemin de l'étape finale `GET /custom-tasks/{TT_COMPANY}`, qui affiche le travail
+   à rendre défini dans `TT_CUSTOMTASKS` (Phase B).
 
 ---
 
@@ -41,7 +41,7 @@ Le test `tests/test_self_contained.py` prouve mécaniquement cette séparation.
 
 ### docker-compose (recommandé)
 ```bash
-docker compose up --build
+TT_ADMIN_SECRET=monsecret docker compose up --build
 ```
 
 ### docker seul
@@ -73,7 +73,7 @@ Renvoie un JSON : timeline, durée jusqu'à l'étape finale, tentatives, erreurs
 | Variable | Défaut | Rôle |
 |---|---|---|
 | `TT_COMPANY` | `THOSTED` | Nom dans l'ASCII art, l'endpoint final et le header `X-Entretien`. |
-| `TT_CUSTOMTASKS` | `None` | Tâches additionnelles, séparées par `\n\n`. |
+| `TT_CUSTOMTASKS` | `None` | Tâches additionnelles, séparées par une ligne vide. La première ligne de chaque tâche devient son titre. |
 | `TT_ADMIN_SECRET` | `change-me` | Secret du rapport `/admin/report` (outillage uniquement). |
 
 ---
